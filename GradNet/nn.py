@@ -1,45 +1,63 @@
 import random
+from GradNet.engine import Value
 
 class Neuron:
+
     def __init__(self, nin):
-        # Initialize weights for each input from the previous layer
-        self.weights = [random.uniform(-1, 1) for _ in range(nin)]
-        self.bias = random.uniform(-1, 1)  
-    
-    def forward(self, inputs):
-        # Multiply each input by its respective weight and sum the results, including bias
-        weighted_sum = sum(w * inp for w, inp in zip(self.weights, inputs)) + self.bias
-        print("inputs = ", inputs)
-        print("weights = ", self.weights)
-        print("bias = ", self.bias)
-        print("weighted_sum = ", weighted_sum)
-        print("\n")
-        return  weighted_sum  
+        self.w = [Value(random.uniform(-1,1)) for _ in range(nin)]
+        self.b = Value(random.uniform(-1,1))
+
+    def __call__(self, x):
+        # w * x + b
+        act = sum((wi*xi for wi, xi in zip(self.w,x)), self.b)
+        out = act.tanh()
+        return out
+
+    def parameters(self):
+        #here as you can see we are only collecting weights and biases
+        #Hence when we update we only update weights and biases according to their current gradient
+        return self.w + [self.b]
 
 
 class Layer:
+
     def __init__(self, nin, nout):
-        # Create neurons in the layer, each with 'nin' inputs (from previous layer)
         self.neurons = [Neuron(nin) for _ in range(nout)]
-    
-    def forward(self, inputs):
-        # Pass the inputs to each neuron and collect the outputs
-        return [neuron.forward(inputs) for neuron in self.neurons]
-    
-    
-class MLP():
 
-    def __init__(self, num_weight, num_neuron, num_layer):
-        self.layers = [Layer(num_weight, num_neuron ) for _ in range(num_layer)]
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]
+        return outs[0] if len(outs) == 1 else outs
+
+    def parameters(self):
+        return [p for neuron in self.neurons for p in neuron.parameters()]
         
-    def forward(self, inputs):
-        # Pass the inputs to each neuron in the respective layer and collect the outputs
+        # params = []
+        # for neuron in self.neurons:
+        #     p = neuron.parameters()
+        #     params.extend(p)
+        # return params
+
+
+class MLP:
+
+    def __init__(self, nin, nouts):
+        sz = [nin] + nouts
+        self.layers = [Layer(sz[i], sz[i+1]) for i in range (len(nouts))]
+
+    def __call__(self, x):
         for layer in self.layers:
-            inputs = layer.forward(inputs)  # Pass the outputs as inputs to the next layer
-        return inputs   
+            x = layer(x)
+        return x
+
+    def parameters(self):
+        return [p for layer in self.layers for p in layer.parameters()]
         
 
 
 
 
-        
+# nin = 2 means it creates two weights. So basically Neuron(2) is just one neuron we are introducing that does multiplication of the 
+# two weights with two inputs
+
+# x in __call__ function is inputs [2.0, 3.0]
+# nout is the number of neurones in a layer
